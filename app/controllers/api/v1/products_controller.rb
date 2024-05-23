@@ -44,6 +44,6 @@ class Api::V1::ProductsController < ApplicationController
   end
 
   def product_params
-    params.require(:product).permit(:category, :product_name, :brand_name, :product_model_name, :connecting_technology, :mobile_application, :product_model_no, :asin_no, :country, :description, :special_features, :features, :warranty, :mrp, :gst, :height, :width, :depth, :weight, :material, :discount, :price, :delivery_time, :coupon_name, :coupon_discount, :info)
+    params.require(:product).permit(:category, :product_name, :brand_name, :product_model_name, :connecting_technology, :mobile_application, :product_model_no, :asin_no, :country, :description, :special_features, :features, :warranty, :mrp, :gst, :height, :width, :depth, :weight, :material, :discount, :price, :delivery_time, :coupon_name, :coupon_discount, :info, :main_image, other_images: [])
   end
 end
