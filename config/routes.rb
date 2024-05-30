@@ -1,4 +1,8 @@
 Rails.application.routes.draw do
+  use_doorkeeper do
+    skip_controllers :authorizations, :applications, :authorized_applications
+  end
+  devise_for :users
   # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
@@ -10,6 +14,11 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :products
+      resources :users do
+        get :credential, on: :collection
+        post :login, on: :collection
+      end
+      resources :categories
     end
   end
 end
