@@ -8,7 +8,6 @@ class CreatePersonalInfos < ActiveRecord::Migration[7.1]
       t.string :account_name
       t.string :account_no
       t.string :ifsc
-      t.references :user, null: false, foreign_key: true
 
       t.timestamps
     end
