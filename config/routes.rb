@@ -13,7 +13,10 @@ Rails.application.routes.draw do
   # root "posts#index"
   namespace :api do
     namespace :v1 do
-      resources :products
+      resources :products do
+        post :add_images, on: :collection
+        delete :delete_images, on: :member
+      end
       resources :users do
         get :credential, on: :collection
         post :login, on: :collection

@@ -5,7 +5,7 @@ class Api::V1::CategoriesController < ApplicationController
     categories = Category.all
     render json: {message: "Categories fetched successfully", categories: categories}, status: :ok
   end
-  
+
   def create
     category = Category.new(category_params)
     if category.save
@@ -29,10 +29,10 @@ class Api::V1::CategoriesController < ApplicationController
   end
 
   def destroy
-    if @product.destroy
-      render json: { message: 'product has been deleted successfully.' }, status: :ok
+    if @category.destroy
+      render json: { message: 'category has been deleted successfully.' }, status: :ok
     else
-      render json: { message: @product.errors.full_messages }, status: :unprocessable_entity
+      render json: { message: @category.errors.full_messages }, status: :unprocessable_entity
     end
   end
 

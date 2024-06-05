@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_05_30_121159) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_03_095844) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -105,18 +105,15 @@ ActiveRecord::Schema[7.1].define(version: 2024_05_30_121159) do
   end
 
   create_table "products", force: :cascade do |t|
-    t.string "category"
     t.string "product_name"
     t.string "brand_name"
     t.string "product_model_name"
     t.string "connecting_technology"
-    t.string "mobile_application"
+    t.boolean "mobile_application"
     t.string "product_model_no"
     t.string "asin_no"
     t.string "country"
     t.text "description"
-    t.string "special_features"
-    t.string "features"
     t.string "warranty"
     t.decimal "mrp"
     t.string "gst"
@@ -133,6 +130,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_05_30_121159) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "category_id", null: false
+    t.jsonb "features", default: []
+    t.jsonb "special_features", default: []
     t.index ["category_id"], name: "index_products_on_category_id"
   end
 
