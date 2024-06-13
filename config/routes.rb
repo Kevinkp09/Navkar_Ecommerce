@@ -14,14 +14,20 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :products do
-        post :add_images, on: :collection
-        delete :delete_images, on: :member
+        post :add_images
+        delete :delete_image, on: :member
       end
       resources :users do
         get :credential, on: :collection
         post :login, on: :collection
       end
       resources :categories
+      resources :couriers
+      resources :carts, only: [:index]
+      resources :cart_items, only: [:create, :destroy, :update]
+      resources :coupons
+      resources :orders, only: [:create, :index]
+      resources :quotations, only: [:create, :index, :destroy, :update] 
     end
   end
 end
