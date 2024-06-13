@@ -3,5 +3,6 @@ class Product < ApplicationRecord
   has_many_attached :other_images
   has_one_attached :brochure
   belongs_to :category, foreign_key: "category_id"
-  belongs_to :order, class_name: "order", foreign_key: "order_id", optional: true
+  has_many :order_items, dependent: :destroy
+  has_many :cart_items, dependent: :destroy
 end

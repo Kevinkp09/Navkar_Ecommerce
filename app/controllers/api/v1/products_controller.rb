@@ -1,14 +1,14 @@
 class Api::V1::ProductsController < ApplicationController
   before_action :set_product, only: [:update, :destroy, :show]
-
+  skip_before_action :doorkeeper_authorize!, only: %i[index show]
   def index
     products = Product.all
     products_data = products.map do |product|
       product.attributes.merge(
         category: product.category.name,
-        main_image_url: product.main_image.attached? ? url_for(product.main_image) : nil,
-        other_images_urls: product.other_images.attached? ? product.other_images.map { |image| url_for(image) } : [],
-        brochure_url: product.brochure.attached? ? url_for(product.brochure) : nil
+        main_image_url: product.main_image.attached? ? url_for(product.main_image) : "N/A",
+        other_images: product.other_images.attached? ? product.other_images.map { |image| { id: image.blob.id, url: url_for(image) } } : "N/A",
+        brochure_url: product.brochure.attached? ? url_for(product.brochure) : "N/A",
       )
     end
     render json: { products: products_data }, status: :ok
@@ -32,6 +32,8 @@ class Api::V1::ProductsController < ApplicationController
   def create
     product = Product.new(product_params)
     if product.save
+      discounted_price = product.mrp - (product.mrp * (product.discount || 0) / 100.0)
+      product.update(discount_on_mrp: discounted_price)
       render json: { product: product, category_name: product.category.name, message: "Product successfully created" }, status: :created
     else
       render json: { error: product.errors.full_messages }, status: :unprocessable_entity
@@ -55,10 +57,10 @@ class Api::V1::ProductsController < ApplicationController
   end
 
   def add_images
-    @product = Product.find(params[:product_id])
-    if params[:other_images].present?
-      @product.images.attach(params[:other_images])
-      images_details = @product.images.map do |image|
+    product = Product.find(params[:product_id])
+    if params[:product][:other_images].present?
+      product.other_images.attach(params[:product][:other_images])
+      images_details = product.other_images.map do |image|
         {
           id: image.id,
           filename: image.filename.to_s,
@@ -81,25 +83,6 @@ class Api::V1::ProductsController < ApplicationController
 
   private
 
-  def upload_product_images(product, images_params)
-    images_to_attach = []
-    images_params = [images_params] unless images_params.is_a?(Array)
-    images_params.each do |image_data|
-      begin
-        decoded_data = URI.open(image_data)
-      rescue OpenURI::HTTPError => e
-        puts "Error downloading image: #{e.message}"
-        next
-      end
-      images_to_attach << {
-        io: decoded_data,
-        content_type: "image/jpg",
-        filename: "#{rand(0..100)}.jpg"
-      }
-    end
-    product.other_images.attach(images_to_attach) if images_to_attach.size.positive?
-  end
-
   def set_product
     @product = Product.find(params[:id])
     render json: { message: 'Product not found' }, status: :not_found unless @product
@@ -111,7 +94,7 @@ class Api::V1::ProductsController < ApplicationController
       :connecting_technology, :mobile_application, :product_model_no, :asin_no,
       :country, :description, :warranty, :mrp, :gst, :height, :width, :depth,
       :weight, :material, :discount, :price, :delivery_time, :coupon_name,
-      :coupon_discount, :info, :main_image, :brochure, other_images: [], features: [], special_features: []
+      :coupon_discount, :info, :bestseller, :featured, :discount_on_mrp, :main_image, :brochure, other_images: [], features: [], special_features: []
     )
   end
 end
