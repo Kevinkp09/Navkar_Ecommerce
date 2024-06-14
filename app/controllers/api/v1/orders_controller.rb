@@ -24,7 +24,7 @@ class Api::V1::OrdersController < ApplicationController
           return
         end
       end
-      @cart.update(total_price: nil, discounted_price: nil, coupon_id: nil)
+      @cart.update(total_price: nil, discounted_price: nil)
       @cart.cart_items.destroy_all
       render json: { message: 'Order placed successfully.', order_id: @order.id, total_price: @order.total_price, discounted_price: @order.discounted_price }, status: :created
     else
