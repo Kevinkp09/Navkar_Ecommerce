@@ -4,7 +4,7 @@ class Api::V1::CartsController < ApplicationController
   def index
     cart_items = @cart.cart_items.includes(:product)
     cart_items_with_details = cart_items.map do |item|
-      discounted_price = (item.product.discount_on_mrp * item.quantity)
+      discounted_price = item.product.discount_on_mrp * item.quantity
       {
         id: item.id,
         quantity: item.quantity,
@@ -13,13 +13,11 @@ class Api::V1::CartsController < ApplicationController
       }
     end
 
-    total_price = cart_items.sum { |item| item.product.mrp * item.quantity }
-     total_discounted_price = cart_items.sum { |item| item.product.discount_on_mrp * item.quantity }
     render json: {
       cart_items: cart_items_with_details,
-      total_price: total_price,
-      total_discounted_price: total_discounted_price
-    }
+      total_price: @cart.total_price,
+      discounted_price: @cart.discounted_price
+    }, status: :ok
   end
 
   def apply_coupon
