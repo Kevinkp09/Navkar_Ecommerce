@@ -33,7 +33,7 @@ class Api::V1::CartsController < ApplicationController
       if total_price >= coupon.amount
         discount_amount = total_price * (coupon.discount / 100.0)
         discounted_price = total_price - discount_amount
-        @cart.update(total_price: total_price, discounted_price: discounted_price, coupon_id: coupon.id)
+        @cart.update(total_price: total_price, discounted_price: discounted_price)
 
         render json: { message: 'Coupon applied successfully.', total_price: total_price, discounted_price: discounted_price, discount_amount: discount_amount, cart_id: @cart.id }, status: :ok
       else
