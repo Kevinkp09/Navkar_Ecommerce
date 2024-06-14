@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_13_062625) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_14_061536) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -56,6 +56,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_13_062625) do
     t.bigint "user_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.decimal "total_price"
+    t.decimal "discounted_price"
     t.index ["user_id"], name: "index_carts_on_user_id"
   end
 
@@ -127,6 +129,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_13_062625) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.bigint "coupon_id"
+    t.decimal "discounted_price"
+    t.index ["coupon_id"], name: "index_orders_on_coupon_id"
     t.index ["courier_id"], name: "index_orders_on_courier_id"
   end
 
@@ -195,6 +200,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_13_062625) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.decimal "discounted_total_price"
+    t.text "address"
   end
 
   create_table "users", force: :cascade do |t|
@@ -225,6 +231,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_13_062625) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "products"
+  add_foreign_key "orders", "coupons"
   add_foreign_key "orders", "couriers"
   add_foreign_key "products", "categories"
   add_foreign_key "quotation_items", "products"

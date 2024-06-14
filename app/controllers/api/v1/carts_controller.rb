@@ -4,7 +4,7 @@ class Api::V1::CartsController < ApplicationController
   def index
     cart_items = @cart.cart_items.includes(:product)
     cart_items_with_details = cart_items.map do |item|
-      discounted_price = item.product.mrp - (item.product.mrp * (item.product.discount || 0) / 100.0)
+      discounted_price = (item.product.discount_on_mrp * item.quantity)
       {
         id: item.id,
         quantity: item.quantity,
@@ -13,12 +13,35 @@ class Api::V1::CartsController < ApplicationController
       }
     end
 
-    total_price = cart_items.sum { |item| item.product.mrp - (item.product.mrp * (item.product.discount || 0) / 100.0) * item.quantity }
-
+    total_price = cart_items.sum { |item| item.product.mrp * item.quantity }
+     total_discounted_price = cart_items.sum { |item| item.product.discount_on_mrp * item.quantity }
     render json: {
       cart_items: cart_items_with_details,
-      total_price: total_price
+      total_price: total_price,
+      total_discounted_price: total_discounted_price
     }
+  end
+
+  def apply_coupon
+    coupon = Coupon.find_by(code: params[:coupon_code])
+    if coupon
+      total_price = 0
+      @cart.cart_items.each do |cart_item|
+        total_price += cart_item.product.discount_on_mrp * cart_item.quantity
+      end
+
+      if total_price >= coupon.amount
+        discount_amount = total_price * (coupon.discount / 100.0)
+        discounted_price = total_price - discount_amount
+        @cart.update(total_price: total_price, discounted_price: discounted_price, coupon_id: coupon.id)
+
+        render json: { message: 'Coupon applied successfully.', total_price: total_price, discounted_price: discounted_price, discount_amount: discount_amount, cart_id: @cart.id }, status: :ok
+      else
+        render json: { errors: 'Total price does not meet the minimum amount for the coupon' }, status: :unprocessable_entity
+      end
+    else
+      render json: { errors: 'Invalid coupon code' }, status: :unprocessable_entity
+    end
   end
 
   private
@@ -27,4 +50,3 @@ class Api::V1::CartsController < ApplicationController
     @cart = current_user.cart
   end
 end
-

@@ -39,6 +39,7 @@ class Api::V1::QuotationsController < ApplicationController
         name: quotation.name,
         email: quotation.email,
         mobile_number: quotation.mobile_number,
+        address: quotation.address,
         total_price: quotation.total_price,
         discounted_total_price: quotation.discounted_total_price,
         created_at: quotation.created_at,
@@ -130,7 +131,7 @@ class Api::V1::QuotationsController < ApplicationController
   private
 
   def quotation_params
-    params.require(:quotation).permit(:name, :email, :mobile_number, quotation_items: [:product_id, :quantity, :discount])
+    params.require(:quotation).permit(:name, :email, :mobile_number, :address,  quotation_items: [:product_id, :quantity, :discount])
   end
 
   def quotation_items_params
