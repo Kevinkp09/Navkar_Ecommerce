@@ -23,11 +23,15 @@ Rails.application.routes.draw do
       end
       resources :categories
       resources :couriers
-      resources :carts, only: [:index]
+      resources :carts, only: [:index] do
+        post :apply_coupon, on: :collection 
+      end
       resources :cart_items, only: [:create, :destroy, :update]
       resources :coupons
-      resources :orders, only: [:create, :index]
-      resources :quotations, only: [:create, :index, :destroy, :update] 
+      resources :orders, only: [:create, :index] do
+        patch :update_status
+      end
+      resources :quotations, only: [:create, :index, :destroy, :update]
     end
   end
 end
