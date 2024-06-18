@@ -3,8 +3,13 @@ class Api::V1::CartsController < ApplicationController
 
   def index
     cart_items = @cart.cart_items.includes(:product)
+    total_discounted_price = 0
+    total_mrp = 0
     cart_items_with_details = cart_items.map do |item|
       discounted_price = item.product.discount_on_mrp * item.quantity
+      total_price = item.product.mrp * item.quantity
+      total_discounted_price += discounted_price
+      total_mrp += total_price
       {
         id: item.id,
         quantity: item.quantity,
@@ -12,11 +17,11 @@ class Api::V1::CartsController < ApplicationController
         product_url: url_for(item.product.main_image)
       }
     end
-
+    @cart.update(total_price: total_mrp, discounted_price: total_discounted_price)
     render json: {
       cart_items: cart_items_with_details,
-      total_price: @cart.total_price,
-      discounted_price: @cart.discounted_price
+      total_price: total_mrp,
+      discounted_price: total_discounted_price
     }, status: :ok
   end
 

@@ -6,8 +6,14 @@ class User < ApplicationRecord
   has_one :personal_info, dependent: :destroy
   has_one :cart, dependent: :destroy
   has_many :orders, dependent: :destroy
+
   def self.authenticate(email, password)
     user = User.find_for_authentication(email: email)
     user&.valid_password?(password) ? user : nil
+  end
+
+  def default_address
+    self.delivery_address
+    self.save!
   end
 end

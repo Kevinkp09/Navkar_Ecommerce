@@ -4,11 +4,8 @@ class Api::V1::OrdersController < ApplicationController
   def create
     @order = current_user.orders.build(order_params)
     @order.total_price = @cart.total_price
-    if @cart.discounted_price.present?
-      @order.discounted_price = @cart.discounted_price
-    else
-      @order.discounted_price = @cart.total_price
-    end
+    @order.discounted_price = @cart.discounted_price.presence || @cart.total_price
+    @order.address = params[:order][:address].presence || current_user.default_address
 
     if @order.save
       @cart.cart_items.each do |cart_item|
@@ -94,7 +91,7 @@ class Api::V1::OrdersController < ApplicationController
   private
 
   def order_params
-    params.require(:order).permit(:status, :courier_id)
+    params.require(:order).permit(:status, :courier_id, :address) 
   end
 
   def set_cart
