@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_18_113139) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_19_155734) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -133,6 +133,9 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_18_113139) do
     t.decimal "discounted_price"
     t.text "address"
     t.string "uuid"
+    t.string "razorpay_order_id"
+    t.string "razorpay_payment_id"
+    t.integer "payment_status", default: 0
     t.index ["coupon_id"], name: "index_orders_on_coupon_id"
     t.index ["courier_id"], name: "index_orders_on_courier_id"
   end

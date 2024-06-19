@@ -29,6 +29,7 @@ Rails.application.routes.draw do
       resources :cart_items, only: [:create, :destroy, :update]
       resources :coupons
       resources :orders, only: [:create, :index] do
+        post :payment_callback, on: :collection
         patch :update_status
         put :assign_courier
       end

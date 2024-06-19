@@ -3,26 +3,29 @@ class Api::V1::OrdersController < ApplicationController
 
   def create
     @order = current_user.orders.build(order_params)
+    @order.total_price = @cart.total_price
+    @order.discounted_price = @cart.discounted_price.presence || @cart.total_price
+    @order.address = params[:order][:address].presence || current_user.default_address
 
     if @order.save
-      amount = @order.discounted_price || @order.total_price
-      razorpay_order = Razorpay::Order.create(amount: (amount * 100).to_i, currency: 'INR')
+      amount = (@order.discounted_price || @order.total_price) * 100
+      razorpay_order = Razorpay::Order.create(amount: amount.to_i, currency: 'INR')
 
       if razorpay_order.present? && razorpay_order.id.present?
-        @order.update(razorpay_order_id: razorpay_order.id, status: :pending)
+        @order.update(razorpay_order_id: razorpay_order.id)
 
         render json: {
           message: "Order created successfully. Proceed to payment.",
           order_id: @order.id,
           razorpay_order_id: razorpay_order.id,
-          amount: amount
+          amount: amount / 100.0
         }, status: :created
       else
         @order.destroy
         render json: { error: "Failed to create Razorpay order" }, status: :unprocessable_entity
       end
     else
-      render json: { error: @order.errors.full_messages }, status: :unprocessable_entity
+      render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
@@ -36,7 +39,24 @@ class Api::V1::OrdersController < ApplicationController
       @order = Order.find_by(razorpay_order_id: order_id)
 
       if @order.present?
-        @order.update(status: :transit, razorpay_payment_id: payment_id)
+        @order.update(payment_status: 'paid', razorpay_payment_id: payment_id, status: :transit)
+
+        @cart.cart_items.each do |cart_item|
+          order_item = @order.order_items.build(
+            product_id: cart_item.product_id,
+            quantity: cart_item.quantity,
+            price: cart_item.product.mrp,
+            discounted_price: cart_item.product.discount_on_mrp
+          )
+
+          unless order_item.save
+            render json: { errors: order_item.errors.full_messages }, status: :unprocessable_entity
+            return
+          end
+        end
+        @cart.update(total_price: nil, discounted_price: nil)
+        @cart.cart_items.destroy_all
+
         render json: { message: "Payment successful and order is now in transit.", order: @order }, status: :ok
       else
         render json: { error: "Order not found" }, status: :not_found
@@ -46,7 +66,7 @@ class Api::V1::OrdersController < ApplicationController
     end
   end
 
- def index
+  def index
     user = current_user
     if user.role == "customer"
       @orders = user.orders.includes(order_items: :product, courier: nil)
@@ -137,6 +157,13 @@ class Api::V1::OrdersController < ApplicationController
     params.require(:order).permit(:status, :courier_id, :address, :uuid)
   end
 
+  def find_order
+    @order = Order.find_by(razorpay_order_id: params[:order_id])
+    unless @order
+      render json: { message: 'Order not found.' }, status: :not_found
+    end
+  end
+  
   def set_cart
     @cart = current_user.cart
   end
