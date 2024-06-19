@@ -21,7 +21,8 @@ class Api::V1::CartsController < ApplicationController
     render json: {
       cart_items: cart_items_with_details,
       total_price: total_mrp,
-      discounted_price: total_discounted_price
+      discounted_price: total_discounted_price,
+      user: current_user.attributes
     }, status: :ok
   end
 
