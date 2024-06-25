@@ -1,5 +1,6 @@
 class Api::V1::CouriersController < ApplicationController
   before_action :set_courier, only: [:update, :destroy]
+  before_action :authorize_admin
   def index
     couriers = Courier.all
     if couriers
@@ -43,5 +44,11 @@ class Api::V1::CouriersController < ApplicationController
   def set_courier
     @courier = Courier.find(params[:id])
     render json: { message: 'Courier not found' }, status: :not_found unless @courier
+  end
+
+  def authorize_admin
+    unless admin?
+      render json: { error: "You are not authorized to perform this action" }, status: :unauthorized
+    end
   end
 end

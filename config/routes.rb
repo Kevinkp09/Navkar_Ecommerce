@@ -33,7 +33,14 @@ Rails.application.routes.draw do
         patch :update_status
         put :assign_courier
       end
-      resources :quotations, only: [:create, :index, :destroy, :update]
+      resources :quotations, only: [:create, :index, :destroy, :update] do
+        post :send_quotation_details
+      end
+      resources :testimonials
+      resources :pages, only: [:index] do
+        post :add_images, on: :collection
+        delete 'destroy_image/:image_id', to: 'pages#destroy_image', on: :collection
+      end
     end
   end
 end

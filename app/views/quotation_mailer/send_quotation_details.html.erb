@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <h1>Quotation Details</h1>
+    <p>Dear <%= @quotation.name %>,</p>
+    <p>Here are the details of your quotation:</p>
+    <p><strong>Name:</strong> <%= @quotation.name %></p>
+    <p><strong>Email:</strong> <%= @quotation.email %></p>
+    <p><strong>Mobile Number:</strong> <%= @quotation.mobile_number %></p>
+    <p><strong>Address:</strong> <%= @quotation.address %></p>
+    <h2>Quotation Items:</h2>
+    <ul>
+      <% @quotation.quotation_items.each do |item| %>
+        <li>
+          <strong>Product:</strong> <%= item.product.product_name %>
+          <strong>Quantity:</strong> <%= item.quantity %>
+          <strong>Discount:</strong> <%= item.discount %>%
+        </li>
+      <% end %>
+    </ul>
+    <h2>Admin Details:</h2>
+    <p><strong>Name:</strong> <%= @admin.name %></p>
+    <p><strong>Email:</strong> <%= @admin.email %></p>
+    <p><strong>Mobile Number:</strong> <%= @admin.mobile_no %></p>
+    <p><strong>Address:</strong> <%= @admin.delivery_address %></p>
+    <p>Thank you for considering our products.</p>
+  </body>
+</html>

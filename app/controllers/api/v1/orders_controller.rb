@@ -1,19 +1,16 @@
 class Api::V1::OrdersController < ApplicationController
-  before_action :set_cart, only: [:create]
+  before_action :set_cart, only: [:create, :payment_callback]
 
   def create
     @order = current_user.orders.build(order_params)
     @order.total_price = @cart.total_price
     @order.discounted_price = @cart.discounted_price.presence || @cart.total_price
     @order.address = params[:order][:address].presence || current_user.default_address
-
     if @order.save
-      amount = (@order.discounted_price || @order.total_price) * 100
+      amount = (@order.discounted_price) * 100
       razorpay_order = Razorpay::Order.create(amount: amount.to_i, currency: 'INR')
-
       if razorpay_order.present? && razorpay_order.id.present?
         @order.update(razorpay_order_id: razorpay_order.id)
-
         render json: {
           message: "Order created successfully. Proceed to payment.",
           order_id: @order.id,
@@ -30,17 +27,27 @@ class Api::V1::OrdersController < ApplicationController
   end
 
   def payment_callback
-    order_id = params[:order_id]
-    payment_id = params[:payment_id]
+    signature = request.headers['X-Razorpay-Signature']
+    data = request.body.read
+    secret = "45@4tB_wMSqRLEb"
+    digest = OpenSSL::Digest.new('sha256')
+    calculated_signature = OpenSSL::HMAC.hexdigest(digest, secret, data)
 
-    razorpay_order = Razorpay::Order.fetch(order_id)
+    if signature != calculated_signature
+      render json: { message: 'Invalid signature' }, status: :bad_request
+      return
+    end
 
-    if razorpay_order.status == 'paid'
+    payload = JSON.parse(data)
+    event = payload['event']
+
+    case event
+    when 'order.paid'
+      order_id = payload.dig('payload', 'payment', 'entity', 'order_id')
+      payment_id = payload.dig('payload', 'payment', 'entity', 'id')
       @order = Order.find_by(razorpay_order_id: order_id)
-
       if @order.present?
-        @order.update(payment_status: 'paid', razorpay_payment_id: payment_id, status: :transit)
-
+        @order.update(payment_status: 'paid', razorpay_payment_id: payment_id, status: "In Transit")
         @cart.cart_items.each do |cart_item|
           order_item = @order.order_items.build(
             product_id: cart_item.product_id,
@@ -48,7 +55,6 @@ class Api::V1::OrdersController < ApplicationController
             price: cart_item.product.mrp,
             discounted_price: cart_item.product.discount_on_mrp
           )
-
           unless order_item.save
             render json: { errors: order_item.errors.full_messages }, status: :unprocessable_entity
             return
@@ -56,13 +62,12 @@ class Api::V1::OrdersController < ApplicationController
         end
         @cart.update(total_price: nil, discounted_price: nil)
         @cart.cart_items.destroy_all
-
         render json: { message: "Payment successful and order is now in transit.", order: @order }, status: :ok
       else
         render json: { error: "Order not found" }, status: :not_found
       end
     else
-      render json: { error: "Payment failed, please try again!" }, status: :unprocessable_entity
+      render json: { error: "Unhandled event type" }, status: :unprocessable_entity
     end
   end
 
@@ -114,7 +119,7 @@ class Api::V1::OrdersController < ApplicationController
             id: order.courier.id,
             name: order.courier.name,
             website: order.courier.website
-          } : nil,
+          } : "N/A",
           order_items: order.order_items.map do |item|
             {
               id: item.id,
@@ -141,6 +146,7 @@ class Api::V1::OrdersController < ApplicationController
   end
 
   def assign_courier
+
     @order = Order.find(params[:order_id])
     @courier = Courier.find(params[:courier_id])
 
@@ -163,8 +169,9 @@ class Api::V1::OrdersController < ApplicationController
       render json: { message: 'Order not found.' }, status: :not_found
     end
   end
-  
+
   def set_cart
     @cart = current_user.cart
+    @cart.reload
   end
 end

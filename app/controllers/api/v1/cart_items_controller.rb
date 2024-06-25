@@ -21,7 +21,16 @@ class Api::V1::CartItemsController < ApplicationController
   def update
     @cart_item = @cart.cart_items.find(params[:id])
     if @cart_item.update(cart_item_params)
-      render json: { message: 'Cart item updated successfully.' }, status: :ok
+      total_discounted_price = @cart.cart_items.includes(:product).sum { |item| item.product.discount_on_mrp * item.quantity }
+      total_price = @cart.cart_items.includes(:product).sum { |item| item.product.mrp * item.quantity }
+
+      if @cart.is_coupon_applied
+        discounted_price = total_discounted_price
+      else
+        discounted_price = total_discounted_price
+      end
+      @cart.update(total_price: total_price, discounted_price: discounted_price)
+      render json: { message: 'Cart item updated successfully.', total_price: total_price, discounted_price: discounted_price }, status: :ok
     else
       render json: { error: @cart_item.errors.full_messages }, status: :unprocessable_entity
     end
@@ -30,7 +39,19 @@ class Api::V1::CartItemsController < ApplicationController
   def destroy
     @cart_item = @cart.cart_items.find(params[:id])
     if @cart_item.destroy
-      render json: {message: "Item removed from cart successfully"}, status: :ok
+      if @cart.cart_items.empty?
+        @cart.update(total_price: 0, discounted_price: 0, is_coupon_applied: false)
+      else
+        total_discounted_price = @cart.cart_items.includes(:product).sum { |item| item.product.discount_on_mrp * item.quantity }
+        total_price = @cart.cart_items.includes(:product).sum { |item| item.product.mrp * item.quantity }
+        if @cart.is_coupon_applied
+          total_discounted_price = @cart.discounted_price
+        else
+          @cart.update(total_price: total_price, discounted_price: total_discounted_price)
+        end
+        @cart.update(total_price: total_price, discounted_price: total_discounted_price)
+      end
+      render json: {message: "Item removed from cart successfully", total_price: total_price, discounted_price: total_discounted_price}, status: :ok
     else
       render json: {error: @cart_item.errors.full_messages}, status: :unprocessable_entity
     end
@@ -49,5 +70,4 @@ class Api::V1::CartItemsController < ApplicationController
   def set_cart_item
     @cart_item = @cart.cart_items.find(params[:id])
   end
-
 end
