@@ -1,6 +1,7 @@
 class Api::V1::ProductsController < ApplicationController
   before_action :set_product, only: [:update, :destroy, :show]
   skip_before_action :doorkeeper_authorize!, only: %i[index show]
+  before_action :authorize_admin, only: [:create, :update, :destroy, :add_images, :delete_image] 
   def index
     products = Product.all
     products_data = products.map do |product|
@@ -96,5 +97,11 @@ class Api::V1::ProductsController < ApplicationController
       :weight, :material, :discount, :price, :delivery_time, :coupon_name,
       :coupon_discount, :info, :bestseller, :featured, :discount_on_mrp, :main_image, :brochure, other_images: [], features: [], special_features: []
     )
+  end
+
+  def authorize_admin
+    unless admin?
+      render json: { error: "You are not authorized to perform this action" }, status: :unauthorized
+    end
   end
 end

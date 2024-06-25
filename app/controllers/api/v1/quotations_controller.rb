@@ -1,6 +1,10 @@
 class Api::V1::QuotationsController < ApplicationController
 
   def create
+    unless current_user.role == "admin"
+      render json: { error: 'Unauthorized access' }, status: :unauthorized
+      return
+    end
     @quotation = Quotation.new(quotation_params.except(:quotation_items))
     total_price = 0
     discounted_total_price = 0
@@ -128,10 +132,28 @@ class Api::V1::QuotationsController < ApplicationController
     end
   end
 
+  def send_quotation_details
+    quotation = Quotation.find(params[:quotation_id])
+    if params[:pdf].present?
+      pdf_file = params[:pdf]
+      pdf_f1 = pdf_file.read
+      quotation.pdf.attach(io: StringIO.new(pdf_f1), filename: "quotation.pdf")
+      admin = current_user
+      recipient_email = quotation.email
+      if QuotationMailer.send_quotation_details(quotation, admin, pdf_f1, recipient_email).deliver_later
+        render json: { message: 'Email sent successfully', url: url_for(quotation.pdf) }, status: :ok
+      else
+        render json: { message: 'Failed to send email' }, status: :unprocessable_entity
+      end
+    else
+      render json: { message: 'PDF file not found in the request' }, status: :unprocessable_entity
+    end
+  end
+
   private
 
   def quotation_params
-    params.require(:quotation).permit(:name, :email, :mobile_number, :address,  quotation_items: [:product_id, :quantity, :discount])
+    params.require(:quotation).permit(:name, :email, :mobile_number, :address, :pdf, quotation_items: [:product_id, :quantity, :discount])
   end
 
   def quotation_items_params

@@ -1,6 +1,6 @@
 class Api::V1::CategoriesController < ApplicationController
   before_action :set_category, only: [:update, :show, :destroy]
-
+  before_action :authorize_admin
   def index
     categories = Category.all
     render json: {message: "Categories fetched successfully", categories: categories}, status: :ok
@@ -44,5 +44,11 @@ class Api::V1::CategoriesController < ApplicationController
 
   def set_category
     @category = Category.find(params[:id])
+  end
+
+  def authorize_admin
+    unless admin?
+      render json: { error: "You are not authorized to perform this action" }, status: :unauthorized
+    end
   end
 end

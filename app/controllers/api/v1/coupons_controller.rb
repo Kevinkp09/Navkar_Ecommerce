@@ -1,5 +1,6 @@
 class Api::V1::CouponsController < ApplicationController
   before_action :set_coupon, only: [:update, :destroy]
+  before_action :authorize_admin
   def index
     coupons = Coupon.all
     render json: {coupons: coupons}, status: :ok
@@ -38,5 +39,11 @@ class Api::V1::CouponsController < ApplicationController
 
   def set_coupon
     @coupon = Coupon.find(params[:id])
+  end
+
+  def authorize_admin
+    unless admin?
+      render json: { error: "You are not authorized to perform this action" }, status: :unauthorized
+    end
   end
 end

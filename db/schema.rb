@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_06_19_155734) do
+ActiveRecord::Schema[7.1].define(version: 2024_06_20_112552) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -58,6 +58,7 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_19_155734) do
     t.datetime "updated_at", null: false
     t.decimal "total_price"
     t.decimal "discounted_price"
+    t.boolean "is_coupon_applied", default: false
     t.index ["user_id"], name: "index_carts_on_user_id"
   end
 
@@ -140,6 +141,11 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_19_155734) do
     t.index ["courier_id"], name: "index_orders_on_courier_id"
   end
 
+  create_table "pages", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
   create_table "personal_infos", force: :cascade do |t|
     t.string "trade_name"
     t.string "pan_no"
@@ -206,6 +212,13 @@ ActiveRecord::Schema[7.1].define(version: 2024_06_19_155734) do
     t.datetime "updated_at", null: false
     t.decimal "discounted_total_price"
     t.text "address"
+  end
+
+  create_table "testimonials", force: :cascade do |t|
+    t.string "name"
+    t.text "comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "users", force: :cascade do |t|
