@@ -18,6 +18,7 @@ class Api::V1::PagesController < ApplicationController
       images_details = page.images.map do |image|
         {
           id: image.id,
+          url: url_for(image),
           filename: image.filename.to_s,
         }
       end

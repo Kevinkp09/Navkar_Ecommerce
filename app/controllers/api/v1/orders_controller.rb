@@ -1,28 +1,42 @@
 class Api::V1::OrdersController < ApplicationController
-  before_action :set_cart, only: [:create, :payment_callback]
+  before_action :set_cart, only: [:create]
+  skip_before_action :doorkeeper_authorize!, only: [:payment_callback]
 
   def create
     @order = current_user.orders.build(order_params)
     @order.total_price = @cart.total_price
     @order.discounted_price = @cart.discounted_price.presence || @cart.total_price
     @order.address = params[:order][:address].presence || current_user.default_address
-    if @order.save
-      amount = (@order.discounted_price) * 100
-      razorpay_order = Razorpay::Order.create(amount: amount.to_i, currency: 'INR')
-      if razorpay_order.present? && razorpay_order.id.present?
-        @order.update(razorpay_order_id: razorpay_order.id)
+    if params[:order][:payment_method] == 'cod'
+      @order.payment_status = 'pending'
+      if @order.save
+        create_order_items
         render json: {
-          message: "Order created successfully. Proceed to payment.",
-          order_id: @order.id,
-          razorpay_order_id: razorpay_order.id,
-          amount: amount / 100.0
+          message: "COD Order created successfully. Awaiting admin confirmation.",
+          order_id: @order.id
         }, status: :created
       else
-        @order.destroy
-        render json: { error: "Failed to create Razorpay order" }, status: :unprocessable_entity
+        render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
       end
     else
-      render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
+      if @order.save
+        amount = (@order.discounted_price) * 100
+        razorpay_order = Razorpay::Order.create(amount: amount.to_i, currency: 'INR')
+        if razorpay_order.present? && razorpay_order.id.present?
+          @order.update(razorpay_order_id: razorpay_order.id)
+          render json: {
+            message: "Order created successfully. Proceed to payment.",
+            order_id: @order.id,
+            razorpay_order_id: razorpay_order.id,
+            amount: amount / 100.0
+          }, status: :created
+        else
+          @order.destroy
+          render json: { error: "Failed to create Razorpay order" }, status: :unprocessable_entity
+        end
+      else
+        render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
+      end
     end
   end
 
@@ -37,7 +51,6 @@ class Api::V1::OrdersController < ApplicationController
       render json: { message: 'Invalid signature' }, status: :bad_request
       return
     end
-
     payload = JSON.parse(data)
     event = payload['event']
 
@@ -45,24 +58,14 @@ class Api::V1::OrdersController < ApplicationController
     when 'order.paid'
       order_id = payload.dig('payload', 'payment', 'entity', 'order_id')
       payment_id = payload.dig('payload', 'payment', 'entity', 'id')
+      email = payload.dig("payload", "payment", "entity", "email")
       @order = Order.find_by(razorpay_order_id: order_id)
+      user = User.find_by(email: email)
+      @cart = user.cart
       if @order.present?
-        @order.update(payment_status: 'paid', razorpay_payment_id: payment_id, status: "In Transit")
-        @cart.cart_items.each do |cart_item|
-          order_item = @order.order_items.build(
-            product_id: cart_item.product_id,
-            quantity: cart_item.quantity,
-            price: cart_item.product.mrp,
-            discounted_price: cart_item.product.discount_on_mrp
-          )
-          unless order_item.save
-            render json: { errors: order_item.errors.full_messages }, status: :unprocessable_entity
-            return
-          end
-        end
-        @cart.update(total_price: nil, discounted_price: nil)
-        @cart.cart_items.destroy_all
-        render json: { message: "Payment successful and order is now in transit.", order: @order }, status: :ok
+        @order.update(payment_status: 'paid', status: "Order Submitted", razorpay_payment_id: payment_id)
+        create_order_items
+        render json: { message: "Payment successful and order is now submitted.", order: @order }, status: :ok
       else
         render json: { error: "Order not found" }, status: :not_found
       end
@@ -85,6 +88,8 @@ class Api::V1::OrdersController < ApplicationController
           tracking_id: order.tracking_id,
           created_at: order.created_at,
           uuid: order.uuid,
+          payment_status: order.payment_status,
+          payment_method: order.payment_method,
           courier: order.courier ? {
             id: order.courier.id,
             name: order.courier.name,
@@ -114,7 +119,9 @@ class Api::V1::OrdersController < ApplicationController
           tracking_id: order.tracking_id,
           uuid: order.uuid,
           created_at: order.created_at,
-          user: order.user.attributes,
+          payment_status: order.payment_status,
+          payment_method: order.payment_method,
+          user: order.user,
           courier: order.courier ? {
             id: order.courier.id,
             name: order.courier.name,
@@ -146,12 +153,10 @@ class Api::V1::OrdersController < ApplicationController
   end
 
   def assign_courier
-
     @order = Order.find(params[:order_id])
     @courier = Courier.find(params[:courier_id])
-
-    if @order.update(courier: @courier, tracking_id: params[:tracking_id], status: params[:status])
-      render json: { message: "Courier and tracking ID assigned successfully.", status: @order.status }, status: :ok
+    if @order.update(courier: @courier, tracking_id: params[:tracking_id], status: params[:status], payment_status: params[:payment_status])
+      render json: { message: "Courier and tracking ID assigned successfully.", order: @order}, status: :ok
     else
       render json: { errors: @order.errors.full_messages }, status: :unprocessable_entity
     end
@@ -160,7 +165,7 @@ class Api::V1::OrdersController < ApplicationController
   private
 
   def order_params
-    params.require(:order).permit(:status, :courier_id, :address, :uuid)
+    params.require(:order).permit(:status, :courier_id, :address, :uuid, :payment_method)
   end
 
   def find_order
@@ -174,4 +179,22 @@ class Api::V1::OrdersController < ApplicationController
     @cart = current_user.cart
     @cart.reload
   end
+
+  def create_order_items
+    @cart.cart_items.each do |cart_item|
+      order_item = @order.order_items.build(
+        product_id: cart_item.product_id,
+        quantity: cart_item.quantity,
+        price: cart_item.product.mrp,
+        discounted_price: cart_item.product.discount_on_mrp
+      )
+      unless order_item.save
+        render json: { errors: order_item.errors.full_messages }, status: :unprocessable_entity
+        return
+      end
+    end
+    @cart.update(total_price: nil, discounted_price: nil)
+    @cart.cart_items.destroy_all
+  end
+
 end
