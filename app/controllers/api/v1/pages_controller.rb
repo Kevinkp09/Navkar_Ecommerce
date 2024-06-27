@@ -13,6 +13,7 @@ class Api::V1::PagesController < ApplicationController
   end
 
   def add_images
+    page = Page.find(params[:id])
     if params[:page][:images].present?
       page.images.attach(params[:page][:images])
       images_details = page.images.map do |image|
@@ -25,6 +26,23 @@ class Api::V1::PagesController < ApplicationController
       render json: { message: "Image added successfully", images: images_details }, status: :ok
     else
       render json: { error: 'No images provided' }, status: :unprocessable_entity
+    end
+  end
+
+  def add_logos
+    page = Page.find(params[:id])
+    if params[:page][:client_logos].present?
+      page.images.attach(params[:page][:client_logos])
+      logos_details = page.client_logos.map do |logo|
+        {
+          id: logo.id,
+          url: url_for(logo),
+          filename: logo.filename.to_s,
+        }
+      end
+      render json: { message: "Logos added successfully", logos: logos_details }, status: :ok
+    else
+      render json: { error: 'No logos provided' }, status: :unprocessable_entity
     end
   end
 
