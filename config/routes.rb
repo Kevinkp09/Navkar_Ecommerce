@@ -38,7 +38,8 @@ Rails.application.routes.draw do
       end
       resources :testimonials
       resources :pages, only: [:index] do
-        post :add_images, on: :collection
+        post :add_images, on: :member
+        post :add_logos, on: :member
         delete 'destroy_image/:image_id', to: 'pages#destroy_image', on: :collection
       end
     end
