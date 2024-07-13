@@ -76,71 +76,41 @@ class Api::V1::OrdersController < ApplicationController
 
   def index
     user = current_user
-    if user.role == "customer"
-      @orders = user.orders.includes(order_items: :product, courier: nil)
-      orders_with_details = @orders.map do |order|
-        {
-          id: order.id,
-          status: order.status,
-          total_price: order.total_price,
-          discounted_price: order.discounted_price,
-          address: order.address,
-          tracking_id: order.tracking_id,
-          created_at: order.created_at,
-          uuid: order.uuid,
-          payment_status: order.payment_status,
-          payment_method: order.payment_method,
-          courier: order.courier ? {
-            id: order.courier.id,
-            name: order.courier.name,
-            website: order.courier.website
-          } : nil,
-          order_items: order.order_items.map do |item|
-            {
-              id: item.id,
-              product_name: item.product.product_name,
-              quantity: item.quantity,
-              price: item.price,
-              product_details: item.product.attributes
-            }
-          end
-        }
-      end
-      render json: { orders: orders_with_details }, status: :ok
-    else
-      @orders = Order.includes(:user, order_items: :product, courier: nil).all
-      orders_with_details = @orders.map do |order|
-        {
-          id: order.id,
-          status: order.status,
-          total_price: order.total_price,
-          discounted_price: order.discounted_price,
-          address: order.address,
-          tracking_id: order.tracking_id,
-          uuid: order.uuid,
-          created_at: order.created_at,
-          payment_status: order.payment_status,
-          payment_method: order.payment_method,
-          user: order.user,
-          courier: order.courier ? {
-            id: order.courier.id,
-            name: order.courier.name,
-            website: order.courier.website
-          } : "N/A",
-          order_items: order.order_items.map do |item|
-            {
-              id: item.id,
-              product_name: item.product.product_name,
-              quantity: item.quantity,
-              price: item.price,
-              product_details: item.product.attributes
-            }
-          end
-        }
-      end
-      render json: { orders: orders_with_details, message: "Orders fetched successfully" }, status: :ok
+    @orders = user.role == "customer" ? user.orders.includes(order_items: :product, courier: nil) : Order.includes(:user, order_items: :product, courier: nil).all
+
+    orders_with_details = @orders.map do |order|
+      {
+        id: order.id,
+        status: order.status,
+        total_price: order.total_price,
+        discounted_price: order.discounted_price,
+        address: order.address,
+        tracking_id: order.tracking_id,
+        created_at: order.created_at,
+        uuid: order.uuid,
+        payment_status: order.payment_status,
+        payment_method: order.payment_method,
+        user: user.role == "customer" ? nil : order.user,
+        courier: order.courier ? {
+          id: order.courier.id,
+          name: order.courier.name,
+          website: order.courier.website
+        } : "N/A",
+        order_items: order.order_items.map do |item|
+          {
+            id: item.id,
+            product_name: item.product.product_name,
+            quantity: item.quantity,
+            price: item.price,
+            product_details: item.product.attributes
+          }
+        end
+      }
     end
+
+    render json: { orders: orders_with_details, message: "Orders fetched successfully" }.compact, status: :ok
   end
+
 
   def update_status
     @order = Order.find(params[:order_id])
