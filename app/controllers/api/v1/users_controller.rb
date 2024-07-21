@@ -5,7 +5,7 @@ class Api::V1::UsersController < ApplicationController
     client_app = Doorkeeper::Application.find_by(uid: params[:client_id])
     return render(json: { error: 'Invalid client ID'}, status: 403) unless client_app
     if user.save
-      # create access token for the user, so the user won't need to login again after registration
+
       access_token = Doorkeeper::AccessToken.create(
         resource_owner_id: user.id,
         application_id: client_app.id,
